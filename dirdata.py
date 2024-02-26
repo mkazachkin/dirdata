@@ -40,7 +40,7 @@ class DirLogger():
             mode='w',
             maxBytes=self.MAX_FILE_SIZE,
             backupCount=self.LOG_FILE_COUNT,
-            encoding='utf-8')
+            encoding=log_file_encoding)
         handler.setFormatter(logging.Formatter(
             "%(levelname)s [%(asctime)s]: %(message)s"))
         self._logger = logging.getLogger(log_file_name)
@@ -90,7 +90,6 @@ class DirData ():
         Возвращает:
             int     - код ошибки. 0, если сканирование прошло успешно
         """
-        data = []
         if not os.path.isdir(self._path):
             self._logger.log_message(
                 'Каталог не найден. Прекращаю работу.',
@@ -130,21 +129,23 @@ class DirData ():
         self._logger.log_message(f"Сканирую каталог '{parent}'")
         for file_obj in os.listdir(parent):
             dir_data = []
-            is_dir = os.path.isdir(file_obj)
+            full_path = os.path.join(parent, file_obj)
+            is_dir = os.path.isdir(full_path)
             file_name = os.path.basename(file_obj)
             file_ext = ''
             if not is_dir:
                 file_name, file_ext = os.path.splitext(file_name)
                 file_ext = file_ext.replace('.', '')
             elif self._recursive:
-                dir_data = self._get_dir_data(os.path.join(parent, file_obj))
+                dir_data = self._get_dir_data(full_path)
                 self._logger.log_message(
                     f"Сканирую каталог '{parent}' (продолжаю прерванное сканирование)")
             file_obj_data = file_tpl(name=file_name, extension=file_ext,
                                      is_dir=is_dir, parent=parent)
             data.append(file_obj_data)
             self._logger.log_message(f'Обработка объекта: {file_obj_data}')
-            data += dir_data
+            if len(dir_data) > 0:
+                data += dir_data
         return data
 
 
@@ -152,7 +153,7 @@ parser = argparse.ArgumentParser(description='Сканер каталога.')
 parser.add_argument('--path', type=str, required=True,
                     help='Путь к сканируемому каталогу.')
 parser.add_argument('--recursive', type=str,
-                    help='Рекурсивная обработка подкаталогов (Y/N)')
+                    help='Рекурсивная обработка подкаталогов [y/N]')
 args = parser.parse_args()
 pre_kwargs = dict()
 pre_kwargs['path'] = args.path
